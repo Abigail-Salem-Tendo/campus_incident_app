@@ -1,13 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
-  // Needed before any async work runs ahead of runApp.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Connects the app to your Firebase project.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -23,17 +22,13 @@ class CampusIncidentApp extends StatelessWidget {
     return MaterialApp(
       title: 'Campus Incident App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00796B)),
-      ),
+      theme: AppTheme.light,
       home: const FirebaseCheckScreen(),
     );
   }
 }
 
-/// Temporary screen to confirm Firebase is connected. We'll replace it
-/// with the real login screen on Day 2.
+/// Temporary screen replaced by the real login flow later
 class FirebaseCheckScreen extends StatelessWidget {
   const FirebaseCheckScreen({super.key});
 
@@ -46,11 +41,18 @@ class FirebaseCheckScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, size: 64, color: Colors.green),
+            Icon(
+              Icons.check_circle,
+              size: 64,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(height: 16),
-            const Text('Firebase connected'),
+            Text(
+              'Firebase connected',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
-            Text(projectId),
+            Text(projectId, style: Theme.of(context).textTheme.bodyMedium),
           ],
         ),
       ),
