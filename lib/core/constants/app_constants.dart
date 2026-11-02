@@ -16,4 +16,11 @@ class AppConstants {
     final value = email.trim().toLowerCase();
     return allowedEmailDomains.any((domain) => value.endsWith('@$domain'));
   }
+
+  static const List<String> campusLocations = [
+    'Learning Commons',
+    'Enterprise Commons',
+    'Social Commons',
+    'Parking Area',
+  ];
 }
