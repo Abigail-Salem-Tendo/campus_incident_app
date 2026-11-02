@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
 
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -11,7 +13,12 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const CampusIncidentApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AuthProvider(),
+      child: const CampusIncidentApp(),
+    )
+  );
 }
 
 class CampusIncidentApp extends StatelessWidget {
@@ -53,6 +60,8 @@ class FirebaseCheckScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(projectId, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 8),
+            Text(context.watch<AuthProvider>().status.name)
           ],
         ),
       ),
