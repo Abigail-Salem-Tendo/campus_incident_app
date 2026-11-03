@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 // import 'screens/auth/login_screen.dart';
 import 'screens/auth_gate.dart';
+import 'providers/report_provider.dart';
 
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -16,10 +17,13 @@ Future<void> main() async {
   );
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ReportProvider()),
+      ],
       child: const CampusIncidentApp(),
-    )
+    ),
   );
 }
 

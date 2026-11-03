@@ -1,5 +1,8 @@
+import 'package:campus_incident_app/screens/reports/submit_report_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../reports/submit_report_screen.dart';
 
 import '../../providers/auth_provider.dart';
 
@@ -29,6 +32,15 @@ class HomeScreen extends StatelessWidget {
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleMedium,
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SubmitReportScreen()));
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('New report'),
       ),
     );
   }
