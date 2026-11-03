@@ -1,14 +1,20 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/report_model.dart';
 import '../services/report_service.dart';
+import '../services/storage_service.dart';
 
 class ReportProvider extends ChangeNotifier {
   final ReportService _service;
+  final StorageService _storage;
 
-  ReportProvider({ReportService? service})
-    : _service = service ?? ReportService();
+  ReportProvider({ReportService? service, StorageService? storage})
+    : _service = service ?? ReportService(),
+      _storage = storage ?? StorageService();
 
   bool _isBusy = false;
   String? _errorMessage;
@@ -25,12 +31,26 @@ class ReportProvider extends ChangeNotifier {
     required bool isAnonymous,
     required String reporterId,
     required String reporterName,
+    File? photo,
   }) async {
     _isBusy = true;
     _errorMessage = null;
     notifyListeners();
 
+    bool uploading = false;
+    String? uploadedUrl;
+
     try {
+      // 1. Upload the photo first (if any) to get its download URL.
+      if (photo != null) {
+        uploading = true;
+        uploadedUrl = await _storage
+            .uploadReportPhoto(file: photo, uid: reporterId)
+            .timeout(const Duration(seconds: 60));
+        uploading = false;
+      }
+
+      // 2. Save the report with the photo URL (or null).
       final report = ReportModel(
         id: '', // Firestore generates the real ID
         title: title.trim(),
@@ -41,15 +61,23 @@ class ReportProvider extends ChangeNotifier {
         reporterId: reporterId,
         reporterName: reporterName,
         isAnonymous: isAnonymous,
+        photoUrl: uploadedUrl,
       );
 
       await _service.createReport(report);
       return true;
+    } on TimeoutException {
+      _errorMessage =
+          'Photo upload timed out. Check your connection and try again.';
+      await _discardPhoto(uploadedUrl);
+      return false;
     } on FirebaseException catch (e) {
-      _errorMessage = _friendlyMessage(e);
+      _errorMessage = uploading ? _storageMessage(e) : _friendlyMessage(e);
+      await _discardPhoto(uploadedUrl);
       return false;
     } catch (_) {
       _errorMessage = 'Something went wrong. Please try again.';
+      await _discardPhoto(uploadedUrl);
       return false;
     } finally {
       _isBusy = false;
@@ -60,6 +88,25 @@ class ReportProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  /// Removes an uploaded photo if the report could not be saved.
+  Future<void> _discardPhoto(String? url) async {
+    if (url != null) {
+      await _storage.deleteByUrl(url);
+    }
+  }
+
+  String _storageMessage(FirebaseException e) {
+    switch (e.code) {
+      case 'unauthorized':
+        return 'You do not have permission to upload photos.';
+      case 'retry-limit-exceeded':
+      case 'network-request-failed':
+        return 'No connection. Check your internet and try again.';
+      default:
+        return 'Photo upload failed. Please try again.';
+    }
   }
 
   String _friendlyMessage(FirebaseException e) {

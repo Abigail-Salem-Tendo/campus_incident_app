@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,7 @@ import '../../models/report_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../widgets/category_selector.dart';
+import '../../widgets/photo_picker_field.dart';
 
 class SubmitReportScreen extends StatefulWidget {
   const SubmitReportScreen({super.key});
@@ -24,6 +26,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
   String? _location;
   bool _isAnonymous = false;
   String? _categoryError;
+  File? _photo;
 
   String? _validateTitle(String? value) {
     final text = value?.trim() ?? '';
@@ -77,6 +80,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
       isAnonymous: _isAnonymous,
       reporterId: user.uid,
       reporterName: profile.name,
+      photo: _photo,
     );
 
     if (!mounted) return;
@@ -167,6 +171,12 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
                     hintText: 'What happened? Add any detail that helps.',
                     alignLabelWithHint: true,
                   ),
+                ),
+                const SizedBox(height: 8),
+                PhotoPickerField(
+                  photo: _photo,
+                  enabled: !isBusy,
+                  onChanged: (file) => setState(() => _photo = file),
                 ),
                 const SizedBox(height: 8),
                 SwitchListTile(
