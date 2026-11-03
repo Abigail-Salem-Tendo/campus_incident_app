@@ -16,4 +16,12 @@ class ReportService {
     final doc = await _reports.add(report.toCreateMap());
     return doc.id;
   }
+
+  // live list of all reports, newest first
+  Stream<List<ReportModel>> watchReports() {
+    return _reports
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(ReportModel.fromDoc).toList());
+  }
 }

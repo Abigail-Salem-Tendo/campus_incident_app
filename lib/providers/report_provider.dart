@@ -19,8 +19,17 @@ class ReportProvider extends ChangeNotifier {
   bool _isBusy = false;
   String? _errorMessage;
 
+  StreamSubscription<List<ReportModel>>? _subscription;
+  List<ReportModel> _reports = [];
+  bool _isLoading = true;
+  String? _listError;
+
   bool get isBusy => _isBusy;
   String? get errorMessage => _errorMessage;
+
+  List<ReportModel> get reports => _reports;
+  bool get isLoading => _isLoading;
+  String? get listError => _listError;
 
   /// Returns true if the report was saved.
   Future<bool> submitReport({
@@ -88,6 +97,53 @@ class ReportProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  //this satart the live reports stream and can be called more then once
+  void startListening() {
+    if (_subscription != null) return;
+    _isLoading = true;
+    _listError = null;
+  
+    _subscription = _service.watchReports().listen(
+      (reports) {
+        _reports = reports;
+        _isLoading = false;
+        _listError = null;
+        notifyListeners();
+      },
+      onError: (Object error) {
+        _listError = error is FirebaseException && error.code == 'permission-denied'
+        ? 'You do not have permission to view reports.'
+        : 'Could not load reports. Check your connection.';
+        _isLoading = false;
+        _subscription?.cancel();
+        _subscription = null;
+        notifyListeners();
+      },
+    );
+  }
+
+  // used by the retry button it restarts the stream and shows the spinner
+  void retry() {
+    startListening();
+    notifyListeners();
+  }
+
+  /// Stops listening and clears the list (e.g. on sign out).
+  void stopListening() {
+    _subscription?.cancel();
+    _subscription = null;
+    _reports = [];
+    _isLoading = true;
+    _listError = null;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   /// Removes an uploaded photo if the report could not be saved.
