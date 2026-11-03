@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../providers/report_provider.dart';
 import '../../widgets/report_card.dart';
+import 'report_detail_screen.dart';
 
 class ReportsListScreen extends StatefulWidget {
   const ReportsListScreen({super.key});
@@ -63,10 +64,11 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
         return ReportCard(
           report: report,
           onTap: () {
-            // Temporary: replaced by the detail screen in Step 4/5.
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Opened: ${report.title}')));
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ReportDetailScreen(reportId: report.id)
+              ),
+            );
           },
         );
       },
