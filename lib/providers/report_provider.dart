@@ -23,6 +23,10 @@ class ReportProvider extends ChangeNotifier {
   List<ReportModel> _reports = [];
   bool _isLoading = true;
   String? _listError;
+  String _searchQuery = '';
+  ReportStatus? _statusFilter;
+  ReportCategory? _categoryFilter;
+  String? _mineUid;
 
   bool get isBusy => _isBusy;
   String? get errorMessage => _errorMessage;
@@ -30,6 +34,60 @@ class ReportProvider extends ChangeNotifier {
   List<ReportModel> get reports => _reports;
   bool get isLoading => _isLoading;
   String? get listError => _listError;
+  String get searchQuery => _searchQuery;
+  ReportStatus? get statusFilter => _statusFilter;
+  ReportCategory? get categoryFilter => _categoryFilter;
+  bool get isMineOnly => _mineUid != null;
+  
+  //true when my reports is selected and the user has submitted nothing
+  bool get isMineEmpty => _mineUid != null && !_reports.any((r) => r.reporterId == _mineUid);
+
+  void showMine(String uid) {
+    _mineUid = uid;
+    notifyListeners();
+  }
+
+  void showAll() {
+    _mineUid = null;
+    notifyListeners();
+  }
+
+  // live list with the current search applied
+  List<ReportModel> get filteredReports {
+    final query = _searchQuery.trim().toLowerCase();
+    return _reports.where((r) {
+      final matchesOwner = _mineUid == null || r.reporterId == _mineUid;
+      final matchesStatus = _statusFilter == null || r.status == _statusFilter;
+      final matchesCategory =
+          _categoryFilter == null || r.category == _categoryFilter;
+      final matchesQuery =
+          query.isEmpty || r.title.toLowerCase().contains(query);
+      return matchesOwner && matchesStatus && matchesCategory && matchesQuery;
+    }).toList();
+  }
+
+  void setStatusFilter(ReportStatus? status) {
+    _statusFilter = status;
+    notifyListeners();
+  }
+
+  void setCategoryFilter(ReportCategory? category) {
+    _categoryFilter = category;
+    notifyListeners();
+  }
+
+  // resets the search, status and category back
+  void clearFilters() {
+    _searchQuery = '';
+    _statusFilter = null;
+    _categoryFilter = null;
+    notifyListeners();
+  }
+
+  void setSearchQuery(String value) {
+    _searchQuery = value;
+    notifyListeners();
+  }
 
   /// Returns true if the report was saved.
   Future<bool> submitReport({
@@ -104,7 +162,7 @@ class ReportProvider extends ChangeNotifier {
     if (_subscription != null) return;
     _isLoading = true;
     _listError = null;
-  
+
     _subscription = _service.watchReports().listen(
       (reports) {
         _reports = reports;
@@ -113,9 +171,10 @@ class ReportProvider extends ChangeNotifier {
         notifyListeners();
       },
       onError: (Object error) {
-        _listError = error is FirebaseException && error.code == 'permission-denied'
-        ? 'You do not have permission to view reports.'
-        : 'Could not load reports. Check your connection.';
+        _listError =
+            error is FirebaseException && error.code == 'permission-denied'
+            ? 'You do not have permission to view reports.'
+            : 'Could not load reports. Check your connection.';
         _isLoading = false;
         _subscription?.cancel();
         _subscription = null;
@@ -135,6 +194,10 @@ class ReportProvider extends ChangeNotifier {
     _subscription?.cancel();
     _subscription = null;
     _reports = [];
+    _searchQuery = '';
+    _statusFilter = null;
+    _categoryFilter = null;
+    _mineUid = null;
     _isLoading = true;
     _listError = null;
     notifyListeners();
