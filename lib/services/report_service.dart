@@ -17,6 +17,30 @@ class ReportService {
     return doc.id;
   }
 
+  /// Updates only the fields a student is allowed to change.
+  Future<void> updateReport({
+    required String id,
+    required String title,
+    required String description,
+    required ReportCategory category,
+    required String location,
+    required bool isAnonymous,
+  }) {
+    return _reports.doc(id).update({
+      'title': title,
+      'description': description,
+      'category': category.name,
+      'location': location,
+      'isAnonymous': isAnonymous,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Deletes a report document.
+  Future<void> deleteReport(String id) {
+    return _reports.doc(id).delete();
+  }
+
   // live list of all reports, newest first
   Stream<List<ReportModel>> watchReports() {
     return _reports

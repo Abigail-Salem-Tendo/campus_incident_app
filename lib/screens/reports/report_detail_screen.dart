@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../models/report_model.dart';
 import '../../providers/report_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/status_badge.dart';
+import 'submit_report_screen.dart';
 
 /// Full details of one report. Looks the report up by ID in the live list,
 /// so status changes show up without reopening the screen.
@@ -20,13 +22,91 @@ class ReportDetailScreen extends StatelessWidget {
     return null;
   }
 
+  Future<void> _confirmDelete(BuildContext context, ReportModel report) async {
+    final provider = context.read<ReportProvider>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete report?'),
+        content: const Text(
+          'This will permanently delete your report. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await provider.deleteReport(report);
+
+    if (success) {
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('Report deleted')));
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            provider.errorMessage ?? 'Could not delete the report.',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final reports = context.watch<ReportProvider>().reports;
-    final report = _find(reports);
+    final provider = context.watch<ReportProvider>();
+    final uid = context.watch<AuthProvider>().profile?.uid;
+    final report = _find(provider.reports);
+
+    // Students can edit or delete their own report only while it is Submitted.
+    final canModify =
+        report != null &&
+        uid != null &&
+        report.reporterId == uid &&
+        report.status == ReportStatus.submitted;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report details')),
+      appBar: AppBar(
+        title: const Text('Report details'),
+        actions: [
+          if (canModify) ...[
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit report',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SubmitReportScreen(reportToEdit: report),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete report',
+              onPressed: provider.isBusy
+                  ? null
+                  : () => _confirmDelete(context, report),
+            ),
+          ],
+        ],
+      ),
       body: report == null
           ? const Center(child: Text('This report is no longer available.'))
           : _DetailContent(report: report),

@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +12,10 @@ import '../../widgets/category_selector.dart';
 import '../../widgets/photo_picker_field.dart';
 
 class SubmitReportScreen extends StatefulWidget {
-  const SubmitReportScreen({super.key});
+  /// When set, the form opens in edit mode for this report.
+  final ReportModel? reportToEdit;
+
+  const SubmitReportScreen({super.key, this.reportToEdit});
 
   @override
   State<SubmitReportScreen> createState() => _SubmitReportScreenState();
@@ -27,6 +31,24 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
   bool _isAnonymous = false;
   String? _categoryError;
   File? _photo;
+
+  bool get _isEditing => widget.reportToEdit != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final report = widget.reportToEdit;
+    if (report != null) {
+      _titleController.text = report.title;
+      _descriptionController.text = report.description;
+      _category = report.category;
+      _isAnonymous = report.isAnonymous;
+      // A dropdown crashes if its value is not in its list.
+      _location = AppConstants.campusLocations.contains(report.location)
+          ? report.location
+          : null;
+    }
+  }
 
   String? _validateTitle(String? value) {
     final text = value?.trim() ?? '';
@@ -59,6 +81,14 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
 
     if (!formOk || !categoryOk) return;
 
+    if (_isEditing) {
+      await _saveChanges();
+    } else {
+      await _createReport();
+    }
+  }
+
+  Future<void> _createReport() async {
     final profile = context.read<AuthProvider>().profile;
     final user = FirebaseAuth.instance.currentUser;
     final reports = context.read<ReportProvider>();
@@ -87,15 +117,39 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
 
     if (success) {
       navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Report submitted')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Report submitted')));
     } else {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            reports.errorMessage ?? 'Could not submit the report.',
-          ),
+          content: Text(reports.errorMessage ?? 'Could not submit the report.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    final reports = context.read<ReportProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    final success = await reports.updateReport(
+      id: widget.reportToEdit!.id,
+      title: _titleController.text,
+      description: _descriptionController.text,
+      category: _category!,
+      location: _location!,
+      isAnonymous: _isAnonymous,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('Report updated')));
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(reports.errorMessage ?? 'Could not save your changes.'),
         ),
       );
     }
@@ -114,7 +168,9 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     final isBusy = context.watch<ReportProvider>().isBusy;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report an issue')),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit report' : 'Report an issue'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -173,12 +229,14 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                PhotoPickerField(
-                  photo: _photo,
-                  enabled: !isBusy,
-                  onChanged: (file) => setState(() => _photo = file),
-                ),
-                const SizedBox(height: 8),
+                if (!_isEditing) ...[
+                  PhotoPickerField(
+                    photo: _photo,
+                    enabled: !isBusy,
+                    onChanged: (file) => setState(() => _photo = file),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Report anonymously'),
@@ -195,7 +253,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Submit report'),
+                      : Text(_isEditing ? 'Save changes' : 'Submit report'),
                 ),
               ],
             ),

@@ -38,9 +38,10 @@ class ReportProvider extends ChangeNotifier {
   ReportStatus? get statusFilter => _statusFilter;
   ReportCategory? get categoryFilter => _categoryFilter;
   bool get isMineOnly => _mineUid != null;
-  
+
   //true when my reports is selected and the user has submitted nothing
-  bool get isMineEmpty => _mineUid != null && !_reports.any((r) => r.reporterId == _mineUid);
+  bool get isMineEmpty =>
+      _mineUid != null && !_reports.any((r) => r.reporterId == _mineUid);
 
   void showMine(String uid) {
     _mineUid = uid;
@@ -152,6 +153,79 @@ class ReportProvider extends ChangeNotifier {
     }
   }
 
+  /// Returns true if the changes were saved.
+  Future<bool> updateReport({
+    required String id,
+    required String title,
+    required String description,
+    required ReportCategory category,
+    required String location,
+    required bool isAnonymous,
+  }) async {
+    _isBusy = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service
+          .updateReport(
+            id: id,
+            title: title.trim(),
+            description: description.trim(),
+            category: category,
+            location: location,
+            isAnonymous: isAnonymous,
+          )
+          .timeout(const Duration(seconds: 15));
+      return true;
+    } on TimeoutException {
+      _errorMessage = 'Saving timed out. Check your connection and try again.';
+      return false;
+    } on FirebaseException catch (e) {
+      _errorMessage = _updateMessage(e);
+      return false;
+    } catch (_) {
+      _errorMessage = 'Something went wrong. Please try again.';
+      return false;
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Deletes the report, then its photo (if any). Returns true if deleted.
+  Future<bool> deleteReport(ReportModel report) async {
+    _isBusy = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service
+          .deleteReport(report.id)
+          .timeout(const Duration(seconds: 15));
+
+      // Best-effort cleanup: the report is already gone at this point.
+      final url = report.photoUrl;
+      if (url != null && url.isNotEmpty) {
+        await _storage.deleteByUrl(url);
+      }
+      return true;
+    } on TimeoutException {
+      _errorMessage =
+          'Deleting timed out. Check your connection and try again.';
+      return false;
+    } on FirebaseException catch (e) {
+      _errorMessage = _deleteMessage(e);
+      return false;
+    } catch (_) {
+      _errorMessage = 'Something went wrong. Please try again.';
+      return false;
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();
@@ -236,6 +310,30 @@ class ReportProvider extends ChangeNotifier {
         return 'No connection. Check your internet and try again.';
       default:
         return 'Could not submit the report. Please try again.';
+    }
+  }
+
+  String _updateMessage(FirebaseException e) {
+    switch (e.code) {
+      case 'permission-denied':
+        return 'You can only edit your own reports while they are still '
+            'Submitted.';
+      case 'unavailable':
+        return 'No connection. Check your internet and try again.';
+      default:
+        return 'Could not save your changes. Please try again.';
+    }
+  }
+
+  String _deleteMessage(FirebaseException e) {
+    switch (e.code) {
+      case 'permission-denied':
+        return 'You can only delete your own reports while they are still '
+            'Submitted.';
+      case 'unavailable':
+        return 'No connection. Check your internet and try again.';
+      default:
+        return 'Could not delete the report. Please try again.';
     }
   }
 }
