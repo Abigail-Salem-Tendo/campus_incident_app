@@ -36,6 +36,17 @@ class ReportService {
     });
   }
 
+  // changes only the status done only by the staff only enforced by the security rule
+  Future<void> updateStatus({
+    required String id,
+    required ReportStatus status,
+  }) {
+    return _reports.doc(id).update({
+      'status': status.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   /// Deletes a report document.
   Future<void> deleteReport(String id) {
     return _reports.doc(id).delete();

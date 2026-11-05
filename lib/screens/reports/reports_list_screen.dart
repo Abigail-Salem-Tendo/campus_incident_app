@@ -8,6 +8,7 @@ import '../../providers/report_provider.dart';
 import '../../widgets/category_filter_field.dart';
 import '../../widgets/report_card.dart';
 import '../../widgets/status_filter_bar.dart';
+import '../../widgets/status_summary.dart';
 import 'report_detail_screen.dart';
 
 class ReportsListScreen extends StatefulWidget {
@@ -37,10 +38,15 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ReportProvider>();
-    return _buildBody(context, provider);
+    final isStaff = context.watch<AuthProvider>().isStaff;
+    return _buildBody(context, provider, isStaff);
   }
 
-  Widget _buildBody(BuildContext context, ReportProvider provider) {
+  Widget _buildBody(
+    BuildContext context,
+    ReportProvider provider,
+    bool isStaff,
+  ) {
     if (provider.listError != null) {
       return _MessageView(
         icon: Icons.cloud_off_outlined,
@@ -67,10 +73,24 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
 
     return Column(
       children: [
+        if (isStaff)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              0,
+            ),
+            child: StatusSummary(
+              counts: provider.statusCount,
+              selected: provider.statusFilter,
+              onChanged: provider.setStatusFilter,
+            ),
+          ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             AppSpacing.md,
-            AppSpacing.md,
+            isStaff ? AppSpacing.sm : AppSpacing.md,
             AppSpacing.md,
             0,
           ),

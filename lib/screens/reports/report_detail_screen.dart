@@ -68,10 +68,36 @@ class ReportDetailScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _changeStatus(
+    BuildContext context,
+    ReportModel report,
+    ReportStatus status,
+  ) async {
+    if (status == report.status) return;
+
+    final provider = context.read<ReportProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final success = await provider.updateStatus(id: report.id, status: status);
+
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Status updated to ${status.label}'
+              : provider.errorMessage ?? 'Could not update the status.',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ReportProvider>();
-    final uid = context.watch<AuthProvider>().profile?.uid;
+    final auth = context.watch<AuthProvider>();
+    final uid = auth.profile?.uid;
+    final isStaff = auth.isStaff;
     final report = _find(provider.reports);
 
     // Students can edit or delete their own report only while it is Submitted.
@@ -109,15 +135,29 @@ class ReportDetailScreen extends StatelessWidget {
       ),
       body: report == null
           ? const Center(child: Text('This report is no longer available.'))
-          : _DetailContent(report: report),
+          : _DetailContent(
+              report: report,
+              showStatusControl: isStaff,
+              isBusy: provider.isBusy,
+              onStatusSelected: (status) =>
+                  _changeStatus(context, report, status),
+            ),
     );
   }
 }
 
 class _DetailContent extends StatelessWidget {
   final ReportModel report;
+  final bool showStatusControl;
+  final bool isBusy;
+  final ValueChanged<ReportStatus> onStatusSelected;
 
-  const _DetailContent({required this.report});
+  const _DetailContent({
+    required this.report,
+    required this.showStatusControl,
+    required this.isBusy,
+    required this.onStatusSelected,
+  });
 
   static const _months = [
     'Jan',
@@ -194,7 +234,102 @@ class _DetailContent extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(report.description, style: theme.textTheme.bodyLarge),
+          if (showStatusControl) ...[
+            const SizedBox(height: AppSpacing.lg),
+            const Divider(),
+            const SizedBox(height: AppSpacing.md),
+            _StatusUpdateSection(
+              current: report.status,
+              isBusy: isBusy,
+              onSelected: onStatusSelected,
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Staff-only list of statuses. Tap a row to move the report to that status.
+class _StatusUpdateSection extends StatelessWidget {
+  final ReportStatus current;
+  final bool isBusy;
+  final ValueChanged<ReportStatus> onSelected;
+
+  const _StatusUpdateSection({
+    required this.current,
+    required this.isBusy,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Update status',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        for (final status in ReportStatus.values)
+          _StatusRow(
+            status: status,
+            isCurrent: status == current,
+            onTap: isBusy ? null : () => onSelected(status),
+          ),
+      ],
+    );
+  }
+}
+
+class _StatusRow extends StatelessWidget {
+  final ReportStatus status;
+  final bool isCurrent;
+  final VoidCallback? onTap;
+
+  const _StatusRow({
+    required this.status,
+    required this.isCurrent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = StatusBadge.colorFor(status);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radius),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppSpacing.touchTarget),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          child: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  status.label,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+              if (isCurrent) Icon(Icons.check, size: 24, color: color),
+            ],
+          ),
+        ),
       ),
     );
   }

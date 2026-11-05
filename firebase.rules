@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Only ALU student and staff email domains can create an account record.
+    function isAluEmail() {
+      return request.auth.token.email.matches('.*@(alustudent|alueducation)\\.com');
+    }
+
+    // Staff = verified user whose own profile document has role 'staff'.
+    function isStaff() {
+      return isVerified()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff';
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && isAluEmail()
+        && request.resource.data.role == 'student'
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if isOwner(uid)
+        && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isVerified();
+
+      allow create: if isVerified()
+        && request.resource.data.keys().hasOnly([
+             'title', 'description', 'category', 'location', 'status',
+             'reporterId', 'reporterName', 'isAnonymous', 'photoUrl',
+             'createdAt', 'updatedAt'
+           ])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 5
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 10
+        && request.resource.data.description.size() <= 500
+        && request.resource.data.category in
+             ['maintenance', 'safety', 'cleanliness', 'utilities', 'it', 'other']
+        && request.resource.data.location is string
+        && request.resource.data.reporterName is string
+        && request.resource.data.isAnonymous is bool
+        && (request.resource.data.photoUrl == null
+            || request.resource.data.photoUrl is string)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // Students: edit their own report only while it is Submitted.
+      allow update: if isVerified()
+        && resource.data.reporterId == request.auth.uid
+        && resource.data.status == 'submitted'
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'title', 'description', 'category', 'location',
+             'isAnonymous', 'updatedAt'
+           ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 5
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 10
+        && request.resource.data.description.size() <= 500
+        && request.resource.data.category in
+             ['maintenance', 'safety', 'cleanliness', 'utilities', 'it', 'other']
+        && request.resource.data.location is string
+        && request.resource.data.isAnonymous is bool
+        && request.resource.data.updatedAt == request.time;
+
+      // Staff: change ONLY the status (and updatedAt).
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'status', 'updatedAt'
+           ])
+        && request.resource.data.status in
+             ['submitted', 'underReview', 'inProgress', 'resolved']
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isVerified()
+        && resource.data.reporterId == request.auth.uid
+        && resource.data.status == 'submitted';
+    }
+
+    // Everything else stays locked until we add rules for it.
+  }
+}

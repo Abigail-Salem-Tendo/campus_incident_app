@@ -43,6 +43,15 @@ class ReportProvider extends ChangeNotifier {
   bool get isMineEmpty =>
       _mineUid != null && !_reports.any((r) => r.reporterId == _mineUid);
 
+  // number of reports in each status, it ignores all filter for staff tiles
+  Map<ReportStatus, int> get statusCount {
+    final counts = {for (final s in ReportStatus.values) s: 0};
+    for (final r in _reports) {
+      counts[r.status] = (counts[r.status] ?? 0) + 1;
+    }
+    return counts;
+  }
+
   void showMine(String uid) {
     _mineUid = uid;
     notifyListeners();
@@ -223,6 +232,46 @@ class ReportProvider extends ChangeNotifier {
     } finally {
       _isBusy = false;
       notifyListeners();
+    }
+  }
+
+  /// Changes a report's status (staff only). Returns true if saved.
+  Future<bool> updateStatus({
+    required String id,
+    required ReportStatus status,
+  }) async {
+    _isBusy = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service
+          .updateStatus(id: id, status: status)
+          .timeout(const Duration(seconds: 15));
+      return true;
+    } on TimeoutException {
+      _errorMessage = 'Saving timed out. Check your connection and try again.';
+      return false;
+    } on FirebaseException catch (e) {
+      _errorMessage = _statusMessage(e);
+      return false;
+    } catch (_) {
+      _errorMessage = 'Something went wrong. Please try again.';
+      return false;
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  String _statusMessage(FirebaseException e) {
+    switch (e.code) {
+      case 'permission-denied':
+        return 'Only staff can change a report\'s status.';
+      case 'unavailable':
+        return 'No connection. Check your internet and try again.';
+      default:
+        return 'Could not update the status. Please try again.';
     }
   }
 
