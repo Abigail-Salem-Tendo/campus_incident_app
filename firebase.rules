@@ -37,7 +37,9 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if isVerified();
+      // Staff read everything. Students read only their own reports.
+      allow read: if isStaff()
+        || (isVerified() && resource.data.reporterId == request.auth.uid);
 
       allow create: if isVerified()
         && request.resource.data.keys().hasOnly([
