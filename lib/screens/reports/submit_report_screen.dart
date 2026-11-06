@@ -164,7 +164,6 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isBusy = context.watch<ReportProvider>().isBusy;
 
     return Scaffold(
@@ -179,8 +178,6 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Category', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 8),
                 CategorySelector(
                   selected: _category,
                   errorText: _categoryError,
@@ -189,7 +186,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
                     _categoryError = null;
                   }),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _titleController,
                   validator: _validateTitle,

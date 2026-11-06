@@ -33,34 +33,32 @@ class CategorySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final iconColor = Theme.of(context).colorScheme.primary;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: ReportCategory.values.map((category) {
-            return ChoiceChip(
-              avatar: Icon(_iconFor(category), size: 18),
-              label: Text(category.label),
-              selected: selected == category,
-              showCheckmark: false,
-              onSelected: (_) => onChanged(category),
-            );
-          }).toList(),
-        ),
-        if (errorText != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            errorText!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.error,
+    return DropdownButtonFormField<ReportCategory>(
+      initialValue: selected,
+      isExpanded: true,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      forceErrorText: errorText,
+      validator: (value) => value == null ? 'Please choose a category' : null,
+      decoration: const InputDecoration(labelText: 'Category'),
+      items: ReportCategory.values
+          .map(
+            (category) => DropdownMenuItem(
+              value: category,
+              child: Row(
+                children: [
+                  Icon(_iconFor(category), size: 20, color: iconColor),
+                  const SizedBox(width: 8),
+                  Text(category.label),
+                ],
+              ),
             ),
-          ),
-        ],
-      ],
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
     );
   }
 }

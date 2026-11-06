@@ -5,7 +5,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../models/report_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
-import '../../widgets/category_filter_field.dart';
 import '../../widgets/report_card.dart';
 import '../../widgets/status_filter_bar.dart';
 import '../../widgets/status_summary.dart';
@@ -26,7 +25,11 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
     super.initState();
     final provider = context.read<ReportProvider>();
     _searchController = TextEditingController(text: provider.searchQuery);
-    provider.startListening();
+    final auth = context.read<AuthProvider>();
+    final uid = auth.profile?.uid;
+    if (uid != null) {
+      provider.startListening(uid: uid, isStaff: auth.isStaff);
+    }
   }
 
   @override
@@ -62,14 +65,17 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
     }
 
     if (provider.reports.isEmpty) {
-      return const _MessageView(
-        icon: Icons.inbox_outlined,
-        title: 'No reports yet',
-        message: 'Reports submitted on campus will appear here.',
+      return _MessageView(
+        icon: isStaff ? Icons.inbox_outlined : Icons.assignment_outlined,
+        title: isStaff ? 'No reports yet' : 'You have no reports yet',
+        message: isStaff
+            ? 'Reports submitted on campus will appear here.'
+            : 'Tap "New report" to report an issue on campus.',
       );
     }
 
     final reports = provider.filteredReports;
+    final category = provider.categoryFilter;
 
     return Column(
       children: [
@@ -87,16 +93,17 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
               onChanged: provider.setStatusFilter,
             ),
           ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            isStaff ? AppSpacing.sm : AppSpacing.md,
-            AppSpacing.md,
-            0,
+        if (isStaff)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              0,
+            ),
+            child: _buildViewToggle(context, provider),
           ),
-          child: _buildViewToggle(context, provider),
-        ),
-        if (provider.isMineEmpty)
+        if (isStaff && provider.isMineEmpty)
           const Expanded(
             child: _MessageView(
               icon: Icons.assignment_outlined,
@@ -105,24 +112,30 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
             ),
           )
         else ...[
-          const SizedBox(height: AppSpacing.sm),
+          SizedBox(height: isStaff ? AppSpacing.sm : AppSpacing.md),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: _buildSearchField(provider),
+            child: _buildSearchField(context, provider),
           ),
           const SizedBox(height: AppSpacing.sm),
-          StatusFilterBar(
-            selected: provider.statusFilter,
-            onChanged: provider.setStatusFilter,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: CategoryFilterField(
-              selected: provider.categoryFilter,
-              onChanged: provider.setCategoryFilter,
+          if (!isStaff)
+            StatusFilterBar(
+              selected: provider.statusFilter,
+              onChanged: provider.setStatusFilter,
             ),
-          ),
+          if (category != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: InputChip(
+                  label: Text(category.label),
+                  onDeleted: () => provider.setCategoryFilter(null),
+                ),
+              ),
+            ),
+          ],
           Expanded(
             child: reports.isEmpty
                 ? _MessageView(
@@ -162,7 +175,7 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
     );
   }
 
-  Widget _buildSearchField(ReportProvider provider) {
+  Widget _buildSearchField(BuildContext context, ReportProvider provider) {
     return TextField(
       controller: _searchController,
       onChanged: provider.setSearchQuery,
@@ -170,9 +183,11 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
       decoration: InputDecoration(
         hintText: 'Search by title',
         prefixIcon: const Icon(Icons.search),
-        suffixIcon: provider.searchQuery.isEmpty
-            ? null
-            : IconButton(
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (provider.searchQuery.isNotEmpty)
+              IconButton(
                 icon: const Icon(Icons.close),
                 tooltip: 'Clear search',
                 onPressed: () {
@@ -180,7 +195,70 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
                   provider.setSearchQuery('');
                 },
               ),
+            IconButton(
+              icon: Badge(
+                isLabelVisible: provider.categoryFilter != null,
+                smallSize: 8,
+                child: const Icon(Icons.tune),
+              ),
+              tooltip: 'Filter by category',
+              onPressed: () => _showCategorySheet(context, provider),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Future<void> _showCategorySheet(
+    BuildContext context,
+    ReportProvider provider,
+  ) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        final selected = provider.categoryFilter;
+
+        Widget option(String label, ReportCategory? value) {
+          return ListTile(
+            title: Text(label),
+            trailing: selected == value ? const Icon(Icons.check) : null,
+            selected: selected == value,
+            onTap: () {
+              provider.setCategoryFilter(value);
+              Navigator.of(sheetContext).pop();
+            },
+          );
+        }
+
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                  ),
+                  child: Text(
+                    'Filter by category',
+                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                  ),
+                ),
+                option('All categories', null),
+                for (final c in ReportCategory.values) option(c.label, c),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

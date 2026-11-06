@@ -53,8 +53,12 @@ class ReportService {
   }
 
   // live list of all reports, newest first
-  Stream<List<ReportModel>> watchReports() {
-    return _reports
+  Stream<List<ReportModel>> watchReports({String? onlyReporterId}) {
+    Query<Map<String, dynamic>> query = _reports;
+    if (onlyReporterId != null) {
+      query = query.where('reporterId', isEqualTo: onlyReporterId);
+    }
+    return query
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map(ReportModel.fromDoc).toList());

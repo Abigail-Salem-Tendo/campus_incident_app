@@ -4,7 +4,7 @@ import '../core/theme/app_spacing.dart';
 import '../models/report_model.dart';
 import 'status_badge.dart';
 
-/// Row of four tiles showing how many reports are in each status.
+/// Row of four compact tiles showing how many reports are in each status.
 /// Tapping a tile selects that status as a filter; tapping it again clears it.
 class StatusSummary extends StatelessWidget {
   final Map<ReportStatus, int> counts;
@@ -22,24 +22,21 @@ class StatusSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final statuses = ReportStatus.values;
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < statuses.length; i++) ...[
-            if (i > 0) const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _SummaryTile(
-                status: statuses[i],
-                count: counts[statuses[i]] ?? 0,
-                isSelected: selected == statuses[i],
-                onTap: () =>
-                    onChanged(selected == statuses[i] ? null : statuses[i]),
-              ),
+    return Row(
+      children: [
+        for (var i = 0; i < statuses.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _SummaryTile(
+              status: statuses[i],
+              count: counts[statuses[i]] ?? 0,
+              isSelected: selected == statuses[i],
+              onTap: () =>
+                  onChanged(selected == statuses[i] ? null : statuses[i]),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -80,23 +77,24 @@ class _SummaryTile extends StatelessWidget {
             horizontal: 4,
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 '$count',
-                style: theme.textTheme.titleLarge?.copyWith(
+                style: theme.textTheme.titleMedium?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                status.label,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  status.label,
+                  maxLines: 1,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],

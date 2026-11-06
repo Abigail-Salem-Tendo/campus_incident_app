@@ -280,35 +280,47 @@ class ReportProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  //this satart the live reports stream and can be called more then once
-  void startListening() {
+  // remembered so retry() can restart the same query
+  String? _listUid;
+  bool _listIsStaff = false;
+
+  // starts the live reports stream and can be called more than once.
+  // Staff get every report, students only get their own.
+  void startListening({required String uid, required bool isStaff}) {
     if (_subscription != null) return;
+    _listUid = uid;
+    _listIsStaff = isStaff;
     _isLoading = true;
     _listError = null;
 
-    _subscription = _service.watchReports().listen(
-      (reports) {
-        _reports = reports;
-        _isLoading = false;
-        _listError = null;
-        notifyListeners();
-      },
-      onError: (Object error) {
-        _listError =
-            error is FirebaseException && error.code == 'permission-denied'
-            ? 'You do not have permission to view reports.'
-            : 'Could not load reports. Check your connection.';
-        _isLoading = false;
-        _subscription?.cancel();
-        _subscription = null;
-        notifyListeners();
-      },
-    );
+    _subscription = _service
+        .watchReports(onlyReporterId: isStaff ? null : uid)
+        .listen(
+          (reports) {
+            _reports = reports;
+            _isLoading = false;
+            _listError = null;
+            notifyListeners();
+          },
+          onError: (Object error) {
+            debugPrint('Report stream error: $error');
+            _listError =
+                error is FirebaseException && error.code == 'permission-denied'
+                ? 'You do not have permission to view reports.'
+                : 'Could not load reports. Check your connection.';
+            _isLoading = false;
+            _subscription?.cancel();
+            _subscription = null;
+            notifyListeners();
+          },
+        );
   }
 
-  // used by the retry button it restarts the stream and shows the spinner
+  // used by the retry button, it restarts the stream and shows the spinner
   void retry() {
-    startListening();
+    final uid = _listUid;
+    if (uid == null) return;
+    startListening(uid: uid, isStaff: _listIsStaff);
     notifyListeners();
   }
 
