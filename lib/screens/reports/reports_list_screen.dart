@@ -93,85 +93,45 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
               onChanged: provider.setStatusFilter,
             ),
           ),
-        if (isStaff)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              0,
-            ),
-            child: _buildViewToggle(context, provider),
+        SizedBox(height: isStaff ? AppSpacing.sm : AppSpacing.md),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: _buildSearchField(context, provider),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (!isStaff)
+          StatusFilterBar(
+            selected: provider.statusFilter,
+            onChanged: provider.setStatusFilter,
           ),
-        if (isStaff && provider.isMineEmpty)
-          const Expanded(
-            child: _MessageView(
-              icon: Icons.assignment_outlined,
-              title: 'No reports of your own yet',
-              message: 'Reports you submit will appear here.',
-            ),
-          )
-        else ...[
-          SizedBox(height: isStaff ? AppSpacing.sm : AppSpacing.md),
+        if (category != null) ...[
+          const SizedBox(height: AppSpacing.sm),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: _buildSearchField(context, provider),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (!isStaff)
-            StatusFilterBar(
-              selected: provider.statusFilter,
-              onChanged: provider.setStatusFilter,
-            ),
-          if (category != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: InputChip(
-                  label: Text(category.label),
-                  onDeleted: () => provider.setCategoryFilter(null),
-                ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: InputChip(
+                label: Text(category.label),
+                onDeleted: () => provider.setCategoryFilter(null),
               ),
             ),
-          ],
-          Expanded(
-            child: reports.isEmpty
-                ? _MessageView(
-                    icon: Icons.search_off_outlined,
-                    title: 'No matching reports',
-                    message: 'Try a different search or filter.',
-                    actionLabel: 'Clear filters',
-                    onAction: () {
-                      _searchController.clear();
-                      provider.clearFilters();
-                    },
-                  )
-                : _buildList(reports),
           ),
         ],
+        Expanded(
+          child: reports.isEmpty
+              ? _MessageView(
+                  icon: Icons.search_off_outlined,
+                  title: 'No matching reports',
+                  message: 'Try a different search or filter.',
+                  actionLabel: 'Clear filters',
+                  onAction: () {
+                    _searchController.clear();
+                    provider.clearFilters();
+                  },
+                )
+              : _buildList(reports),
+        ),
       ],
-    );
-  }
-
-  Widget _buildViewToggle(BuildContext context, ReportProvider provider) {
-    return SegmentedButton<bool>(
-      expandedInsets: EdgeInsets.zero,
-      showSelectedIcon: false,
-      segments: const [
-        ButtonSegment(value: false, label: Text('All reports')),
-        ButtonSegment(value: true, label: Text('My reports')),
-      ],
-      selected: {provider.isMineOnly},
-      onSelectionChanged: (selection) {
-        if (selection.first) {
-          final uid = context.read<AuthProvider>().profile?.uid;
-          if (uid != null) provider.showMine(uid);
-        } else {
-          provider.showAll();
-        }
-      },
     );
   }
 

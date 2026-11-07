@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          Icons.report_problem_outlined,
+                          Icons.mail_outline,
                           size: 36,
                           color: theme.colorScheme.onPrimaryContainer,
                         ),
