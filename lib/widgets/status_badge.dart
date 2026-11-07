@@ -25,6 +25,13 @@ class StatusBadge extends StatelessWidget {
     }
   }
 
+  // In dark mode the base colors are too dim against dark surfaces, so they are lightened to stay readable.
+  static Color textColorFor(BuildContext context, ReportStatus status) {
+    final color = colorFor(status);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Color.lerp(color, Colors.white, 0.4)! : color;
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = colorFor(status);

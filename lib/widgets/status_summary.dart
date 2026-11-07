@@ -58,6 +58,7 @@ class _SummaryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = StatusBadge.colorFor(status);
+    final textColor = StatusBadge.textColorFor(context, status);
 
     return Material(
       color: theme.colorScheme.surfaceContainerLow,
@@ -82,7 +83,7 @@ class _SummaryTile extends StatelessWidget {
               Text(
                 '$count',
                 style: theme.textTheme.titleMedium?.copyWith(
-                  color: color,
+                  color: textColor,
                   fontWeight: FontWeight.w700,
                 ),
               ),
