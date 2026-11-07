@@ -42,6 +42,7 @@ service cloud.firestore {
         || (isVerified() && resource.data.reporterId == request.auth.uid);
 
       allow create: if isVerified()
+        && !isStaff()
         && request.resource.data.keys().hasOnly([
              'title', 'description', 'category', 'location', 'status',
              'reporterId', 'reporterName', 'isAnonymous', 'photoUrl',
@@ -67,6 +68,7 @@ service cloud.firestore {
 
       // Students: edit their own report only while it is Submitted.
       allow update: if isVerified()
+        && !isStaff()
         && resource.data.reporterId == request.auth.uid
         && resource.data.status == 'submitted'
         && request.resource.data.status == 'submitted'
@@ -96,6 +98,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
 
       allow delete: if isVerified()
+        && !isStaff()
         && resource.data.reporterId == request.auth.uid
         && resource.data.status == 'submitted';
     }
