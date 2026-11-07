@@ -8,13 +8,22 @@ import 'app_spacing.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light {
-    final colorScheme = ColorScheme.fromSeed(seedColor: AppColors.seed);
+  static ThemeData get light => _build(Brightness.light);
+
+  static ThemeData get dark => _build(Brightness.dark);
+
+  /// Light and dark share the same seed color, font and component styles.
+  /// Only the brightness changes, so the two themes always match.
+  static ThemeData _build(Brightness brightness) {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: AppColors.seed,
+      brightness: brightness,
+    );
     final base = ThemeData(useMaterial3: true, colorScheme: colorScheme);
 
     return base.copyWith(
       // Inter for every text style (Title, Body, Label, etc.).
-      textTheme: GoogleFonts.interTextTheme(base.textTheme as TextTheme?),
+      textTheme: GoogleFonts.interTextTheme(base.textTheme),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         backgroundColor: colorScheme.surface,

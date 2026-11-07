@@ -1,10 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'providers/auth_provider.dart';
 // import 'screens/auth/login_screen.dart';
 import 'screens/auth_gate.dart';
 import 'providers/report_provider.dart';
+import 'providers/theme_provider.dart';
 
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -12,15 +14,17 @@ import 'firebase_options.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Read the saved Light/Dark choice before the first screen is drawn.
+  final themeProvider = await ThemeProvider.load();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider.value(value: themeProvider),
       ],
       child: const CampusIncidentApp(),
     ),
@@ -32,10 +36,16 @@ class CampusIncidentApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.select<ThemeProvider, ThemeMode>(
+      (theme) => theme.themeMode,
+    );
+
     return MaterialApp(
       title: 'Campus Incident App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       home: const AuthGate(),
     );
   }
@@ -67,7 +77,7 @@ class FirebaseCheckScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(projectId, style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 8),
-            Text(context.watch<AuthProvider>().status.name)
+            Text(context.watch<AuthProvider>().status.name),
           ],
         ),
       ),

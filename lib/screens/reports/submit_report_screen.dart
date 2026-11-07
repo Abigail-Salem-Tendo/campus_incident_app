@@ -15,7 +15,11 @@ class SubmitReportScreen extends StatefulWidget {
   /// When set, the form opens in edit mode for this report.
   final ReportModel? reportToEdit;
 
-  const SubmitReportScreen({super.key, this.reportToEdit});
+  /// Called after a NEW report is submitted. Used when the screen is a tab,
+  /// so the parent can switch to the Reports tab.
+  final VoidCallback? onSubmitted;
+
+  const SubmitReportScreen({super.key, this.reportToEdit, this.onSubmitted});
 
   @override
   State<SubmitReportScreen> createState() => _SubmitReportScreenState();
@@ -31,6 +35,9 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
   bool _isAnonymous = false;
   String? _categoryError;
   File? _photo;
+
+  /// Changing this number rebuilds the location dropdown with an empty value.
+  int _formVersion = 0;
 
   bool get _isEditing => widget.reportToEdit != null;
 
@@ -69,6 +76,20 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     return null;
   }
 
+  /// Empties the form after a new report is submitted.
+  void _resetForm() {
+    _titleController.clear();
+    _descriptionController.clear();
+    setState(() {
+      _category = null;
+      _location = null;
+      _isAnonymous = false;
+      _categoryError = null;
+      _photo = null;
+      _formVersion++;
+    });
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
 
@@ -93,7 +114,6 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final reports = context.read<ReportProvider>();
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
 
     if (profile == null || user == null) {
       messenger.showSnackBar(
@@ -116,8 +136,10 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     if (!mounted) return;
 
     if (success) {
-      navigator.pop();
+      // No pop here: as a tab there is no previous screen to go back to.
+      _resetForm();
       messenger.showSnackBar(const SnackBar(content: Text('Report submitted')));
+      widget.onSubmitted?.call();
     } else {
       messenger.showSnackBar(
         SnackBar(
@@ -200,6 +222,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  key: ValueKey(_formVersion),
                   initialValue: _location,
                   validator: _validateLocation,
                   isExpanded: true,
