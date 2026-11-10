@@ -1,12 +1,12 @@
 # Campus Incident Reporting App
 
-A Flutter mobile app where students report campus issues (maintenance, safety, cleanliness, utilities, IT and network) and authorized staff track them by updating each report's status. Built with Flutter and Firebase for Individual Assignment 2.
+A Flutter mobile app where students report campus issues (maintenance, safety, cleanliness, utilities, IT, and network), and authorized staff track them by updating each report's status. Built with Flutter and Firebase for Individual Assignment 2.
 
 **Author:** Abigail Salem Tendo
 
-**Demo video:** https://youtu.be/5veuubwCgv4
+**Demo video:** https://youtu.be/cg5gOQMtX9E
 
-**Technical report:** 
+**Technical report:** https://docs.google.com/document/d/1i_C0TRe1LyDb_MAj5b4BYkC_waxSw5n-Mdt3-A5j-_g/edit?usp=sharing
 
 ## Features
 
